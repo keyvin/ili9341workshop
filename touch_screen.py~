@@ -1,0 +1,15 @@
+#read X 0x91
+#read Y 0xD1
+#read Z 0xC1
+#stop reading - 0xD0,
+
+#poll till interrupt pin low
+#read z, make sure being touched
+#read x and y at least once, discard
+#read touch again
+#power down/clear interrupt
+
+#rotation - 4095 -x or y
+
+#spio CS1,
+#interrup gpio_18

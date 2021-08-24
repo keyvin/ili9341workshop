@@ -2,7 +2,9 @@ import board
 import digitalio
 import busio
 import time
-cs_pin = digitalio.DigitalInOut(board.CE0)
+
+
+cs_pin = digitalio.DigitalInOut(board.D5)
 dc_pin = digitalio.DigitalInOut(board.D25)
 reset_pin = digitalio.DigitalInOut(board.D24)
 cs_pin.direction = digitalio.Direction.OUTPUT
@@ -11,7 +13,8 @@ reset_pin.direction = digitalio.Direction.OUTPUT
 reset_pin.Value = 1
 cs_pin.Value = 1
 reset_pin.Value = 1
-BAUDRATE = 19000000
+
+BAUDRATE = 30000000
 
 _RDDSDR = 0x0f # Read Display Self-Diagnostic Result
 _SLPOUT = 0x11 # Sleep Out
@@ -41,14 +44,17 @@ _ENA3G = 0xf2 # Enable 3G
 _PGAMCTRL = 0xe0 # Positive Gamma Control
 _NGAMCTRL = 0xe1 # Negative Gamma Control
 
+ROTATION_0 = 0x48 #default is portrait
+ROTATION_90 = 0x28 #we want landscape
 #spi = busio.SPI(board.SCK, MOSI=board.MOSI, MISO=board.MISO)
-#while not spi.try_lock():
-#	pass
-#spi.configure(baudrate=BAUDRATE, phase=0, polarity=0)
 spi = board.SPI()
+
+while not spi.try_lock():
+	pass
+spi.configure(baudrate=BAUDRATE, phase=0, polarity=0)
+spi.unlock()
 reset_pin.value = 1
 def write(command, data=""):
-	print("here")
 	dc_pin.value = 0
 	cs_pin.value = 0
 	spi.write(bytearray([command]))
@@ -58,30 +64,34 @@ def write(command, data=""):
 	cs_pin.value = 1
 
 
-for command, data in (
-	(_RDDSDR, b"\x03\x80\x02"),
-        (_PWCRTLB, b"\x00\xc1\x30"),
-        (_PWRONCTRL, b"\x64\x03\x12\x81"),
-        (_DTCTRLA, b"\x85\x00\x78"),
-        (_PWCTRLA, b"\x39\x2c\x00\x34\x02"),
-        (_PRCTRL, b"\x20"),
-        (_DTCTRLB, b"\x00\x00"),
-        (_PWCTRL1, b"\x23"),
-        (_PWCTRL2, b"\x10"),
-        (_VMCTRL1, b"\x3e\x28"),
-        (_VMCTRL2, b"\x86")):
-	write(command, data)
+def init_screen():
+	for command, data in (
+		(_RDDSDR, b"\x03\x80\x02"),
+        	(_PWCRTLB, b"\x00\xc1\x30"),
+        	(_PWRONCTRL, b"\x64\x03\x12\x81"),
+        	(_DTCTRLA, b"\x85\x00\x78"),
+        	(_PWCTRLA, b"\x39\x2c\x00\x34\x02"),
+        	(_PRCTRL, b"\x20"),
+        	(_DTCTRLB, b"\x00\x00"),
+        	(_PWCTRL1, b"\x23"),
+        	(_PWCTRL2, b"\x10"),
+        	(_VMCTRL1, b"\x3e\x28"),
+        	(_VMCTRL2, b"\x86")):
+		write(command, data)
+#our orientation
+	write(_MADCTL, b"\x28")
+	for command, data in (
+		(_PIXSET, b"\x55"),
+        	(_FRMCTR1, b"\x00\x18"),
+        	(_DISCTRL, b"\x08\x82\x27"),
+        	(_ENA3G, b"\x00"),
+        	(_GAMSET, b"\x01"),
+        	(_PGAMCTRL, b"\x0f\x31\x2b\x0c\x0e\x08\x4e\xf1\x37\x07\x10\x03\x0e\x09\x00"),
+        	(_NGAMCTRL, b"\x00\x0e\x14\x03\x11\x07\x31\xc1\x48\x08\x0f\x0c\x31\x36\x0f")):
+		write(command, data)
+	write(_SLPOUT)
+	time.sleep(.120)
+	write(_DISPON)
 
-write(_MADCTL, b"\x48")
-for command, data in (
-	(_PIXSET, b"\x55"),
-        (_FRMCTR1, b"\x00\x18"),
-        (_DISCTRL, b"\x08\x82\x27"),
-        (_ENA3G, b"\x00"),
-        (_GAMSET, b"\x01"),
-        (_PGAMCTRL, b"\x0f\x31\x2b\x0c\x0e\x08\x4e\xf1\x37\x07\x10\x03\x0e\x09\x00"),
-        (_NGAMCTRL, b"\x00\x0e\x14\x03\x11\x07\x31\xc1\x48\x08\x0f\x0c\x31\x36\x0f")):
-	write(command, data)
-write(_SLPOUT)
-time.sleep(.120)
-write(_DISPON)
+if __name__=="__main__":
+	init_screen()
